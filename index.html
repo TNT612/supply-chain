@@ -112,6 +112,11 @@
     .notification-title { font-size: 12px; font-weight: 600; color: #f8fafc; }
     .notification-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.3; word-break: break-word; }
     main { margin-left: 220px; transition: margin-left 0.3s ease; }
+    .recent-po-table { width: 100%; }
+    .recent-po-thead { display: none; }
+    .recent-po-tbody-row { display: table-row; }
+    .recent-po-tbody-cell { display: table-cell; padding: 12px 16px; border-bottom: 1px solid #1a3870; }
+    canvas { max-width: 100%; }
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); width: 220px; }
       .sidebar.mobile-open { transform: translateX(0); }
@@ -119,6 +124,24 @@
       .sidebar.collapsed.mobile-open { width: 220px; }
       .sidebar-toggle.active { display: flex; }
       main { margin-left: 0; }
+    }
+    @media (max-width: 639px) {
+      main { padding: 1rem; }
+      .recent-po-thead { display: none; }
+      .recent-po-tbody-row { display: block; background: #142d5a; border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+      .recent-po-tbody-cell { display: block; padding: 8px 12px; border-bottom: 1px solid #1a3870; position: relative; padding-left: 100px; }
+      .recent-po-tbody-cell::before { content: attr(data-label); position: absolute; left: 12px; font-weight: 600; color: #94a3b8; font-size: 11px; width: 90px; }
+      .recent-po-tbody-cell:last-child { border-bottom: none; }
+      .chart-range-btn { padding: 2px 8px; font-size: 11px; }
+    }
+    @media (max-width: 380px) {
+      .sidebar-header { padding: 1rem 0.75rem; }
+      .sidebar-logo { font-size: 1.5rem; }
+      .sidebar-title { font-size: 0.75rem; }
+      .sidebar-item-icon { font-size: 1rem; }
+      main { padding: 0.75rem; }
+      h1 { font-size: 1.5rem; }
+      .text-base { font-size: 13px; }
     }
   </style>
 </head>
@@ -194,8 +217,8 @@
     </div>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-      <div class="card kpi-card kpi-card-vendors p-5">
+    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 mb-8">
+      <div class="card kpi-card kpi-card-vendors p-4 sm:p-5">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Total Vendors</p>
@@ -207,7 +230,7 @@
           </div>
         </div>
       </div>
-      <div class="card kpi-card kpi-card-open-pos p-5">
+      <div class="card kpi-card kpi-card-open-pos p-4 sm:p-5">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Open Purchase Orders</p>
@@ -219,7 +242,7 @@
           </div>
         </div>
       </div>
-      <div class="card kpi-card kpi-card-overdue p-5">
+      <div class="card kpi-card kpi-card-overdue p-4 sm:p-5">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Overdue Deliveries</p>
@@ -231,7 +254,7 @@
           </div>
         </div>
       </div>
-      <div class="card kpi-card kpi-card-score p-5">
+      <div class="card kpi-card kpi-card-score p-4 sm:p-5">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Avg Vendor Score</p>
@@ -293,7 +316,7 @@
     </div>
 
     <!-- Recent POs Table -->
-    <div class="card p-6">
+    <div class="card p-4 sm:p-6">
       <div class="flex items-center justify-between mb-5">
         <div>
           <h2 class="text-base font-semibold text-white">Recent Purchase Orders</h2>
@@ -302,8 +325,8 @@
         <button onclick="showPage('purchase-orders')" class="text-blue-400 text-sm hover:text-blue-300 transition-colors">View all →</button>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
+        <table class="w-full text-sm recent-po-table">
+          <thead class="recent-po-thead">
             <tr style="border-bottom:1px solid #1a3870">
               <th class="text-left text-slate-400 font-medium pb-3 pr-4">PO Number</th>
               <th class="text-left text-slate-400 font-medium pb-3 pr-4">Vendor</th>
@@ -831,15 +854,15 @@ function renderDashboard() {
   const tbody = document.getElementById('recent-po-tbody');
   const recent = [...pos].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
   tbody.innerHTML = recent.map(p => `
-    <tr style="border-bottom:1px solid #1a3870">
-      <td class="py-3 pr-4 font-mono text-blue-300 text-xs">${p.poNumber}</td>
-      <td class="py-3 pr-4 text-slate-200">${p.vendorName}</td>
-      <td class="py-3 pr-4 text-slate-400">${p.date}</td>
-      <td class="py-3 pr-4 text-white font-medium">${formatCurrency(p.total)}</td>
-      <td class="py-3 pr-4">${badgeHtml(p.status)}</td>
-      <td class="py-3"><button onclick="deletePO('${p.id}')" class="text-slate-500 hover:text-red-400 transition-colors text-xs">Remove</button></td>
+    <tr class="recent-po-tbody-row" style="border-bottom:1px solid #1a3870">
+      <td class="recent-po-tbody-cell py-3 pr-4 font-mono text-blue-300 text-xs" data-label="PO Number">${p.poNumber}</td>
+      <td class="recent-po-tbody-cell py-3 pr-4 text-slate-200" data-label="Vendor">${p.vendorName}</td>
+      <td class="recent-po-tbody-cell py-3 pr-4 text-slate-400" data-label="Date">${p.date}</td>
+      <td class="recent-po-tbody-cell py-3 pr-4 text-white font-medium" data-label="Total">${formatCurrency(p.total)}</td>
+      <td class="recent-po-tbody-cell py-3 pr-4" data-label="Status">${badgeHtml(p.status)}</td>
+      <td class="recent-po-tbody-cell py-3" data-label="Actions"><button onclick="deletePO('${p.id}')" class="text-slate-500 hover:text-red-400 transition-colors text-xs">Remove</button></td>
     </tr>
-  `).join('') || `<tr><td colspan="6" class="py-8 text-center text-slate-500">No purchase orders yet.</td></tr>`;
+  `).join('') || `<tr class="recent-po-tbody-row"><td class="recent-po-tbody-cell py-8 text-center text-slate-500" colspan="6">No purchase orders yet.</td></tr>`;
 }
 
 function renderPOChart(pos) {
