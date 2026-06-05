@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProcureAI — Supply Chain & Vendor Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              950: '#0a1628',
+              900: '#0d1e3a',
+              800: '#0f2244',
+              700: '#142d5a',
+              600: '#1a3870',
+            },
+            accent: '#3b82f6',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { background-color: #0a1628; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 0; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a1628; }
+    ::-webkit-scrollbar-thumb { background: #1a3870; border-radius: 3px; }
+    .card { background: #0f2244; border: 1px solid #1a3870; border-radius: 12px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+    .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .badge-yellow { background: rgba(234,179,8,0.15); color: #facc15; }
+    .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .badge-gray { background: rgba(148,163,184,0.15); color: #94a3b8; }
+    .kpi-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(59,130,246,0.12); }
+    .page { display: none; }
+    .page.active { display: block; }
+    tr { transition: background 0.12s; }
+    tbody tr:hover { background: rgba(59,130,246,0.06); }
+    .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+    .score-bar { height: 6px; border-radius: 3px; background: #1a3870; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+    input, select, textarea {
+      background: #0a1628;
+      border: 1px solid #1a3870;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: 100%;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #3b82f6; }
+    select option { background: #0f2244; }
+    .chart-fallback { display: none; }
+    .tab-btn { transition: background 0.15s, color 0.15s; }
+    .tab-btn.active { background: #3b82f6; color: #fff; }
+    .risk-meter { height: 8px; border-radius: 4px; background: linear-gradient(to right, #22c55e 0%, #facc15 50%, #ef4444 100%); position: relative; }
+    .risk-needle { width: 3px; height: 16px; background: #fff; border-radius: 2px; position: absolute; top: -4px; transform: translateX(-50%); box-shadow: 0 0 6px rgba(255,255,255,0.5); }
+    .kpi-card-vendors { border-left: 4px solid transparent; background: linear-gradient(#0f2244, #0f2244) padding-box, linear-gradient(180deg, #3b82f6, #1e40af) border-box; }
+    .kpi-card-open-pos { border-left: 4px solid transparent; background: linear-gradient(#0f2244, #0f2244) padding-box, linear-gradient(180deg, #10b981, #047857) border-box; }
+    .kpi-card-overdue { border-left: 4px solid transparent; background: linear-gradient(#0f2244, #0f2244) padding-box, linear-gradient(180deg, #ef4444, #b91c1c) border-box; }
+    .kpi-card-score { border-left: 4px solid transparent; background: linear-gradient(#0f2244, #0f2244) padding-box, linear-gradient(180deg, #f59e0b, #d97706) border-box; }
+    .kpi-counter { display: inline-block; min-width: 3ch; }
+    .kpi-trend { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; }
+    .kpi-trend.up { color: #4ade80; }
+    .kpi-trend.down { color: #f87171; }
+
+    /* Sidebar Styles */
+    .sidebar { width: 220px; height: 100vh; background: #0d1e3a; border-right: 1px solid #1a3870; position: fixed; left: 0; top: 0; z-index: 40; overflow-y: auto; transition: width 0.3s ease, transform 0.3s ease; display: flex; flex-direction: column; }
+    .sidebar.collapsed { width: 64px; }
+    .sidebar-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 50; background: #0f2244; border: 1px solid #1a3870; color: #f8fafc; width: 40px; height: 40px; border-radius: 8px; cursor: pointer; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; }
+    .sidebar-toggle:hover { background: #142d5a; }
+    .sidebar-toggle.active { display: flex; }
+    .sidebar-header { padding: 1.5rem 1rem; border-bottom: 1px solid #1a3870; display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+    .sidebar.collapsed .sidebar-header { justify-content: center; }
+    .sidebar-logo { font-size: 1.75rem; min-width: 1.75rem; }
+    .sidebar-title { font-weight: bold; font-size: 0.875rem; letter-spacing: 0.05em; white-space: nowrap; }
+    .sidebar.collapsed .sidebar-title { display: none; }
+    .sidebar-nav { padding: 1rem 0; flex: 1; overflow-y: auto; }
+    .sidebar-item { display: flex; align-items: center; padding: 0.875rem 1rem; margin: 0.25rem 0.5rem; border-radius: 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s; border-left: 3px solid transparent; font-size: 0.875rem; color: #cbd5e1; text-decoration: none; user-select: none; }
+    .sidebar-item:hover { background: rgba(59,130,246,0.1); }
+    .sidebar-item.active { background: rgba(59,130,246,0.15); border-left-color: #3b82f6; color: #60a5fa; }
+    .sidebar-item-icon { font-size: 1.25rem; min-width: 1.5rem; text-align: center; }
+    .sidebar-item-label { margin-left: 0.75rem; white-space: nowrap; }
+    .sidebar.collapsed .sidebar-item { justify-content: center; padding: 0.875rem; margin: 0.25rem auto; }
+    .sidebar.collapsed .sidebar-item-label { display: none; }
+    .sidebar.collapsed .sidebar-item { border-left: none; }
+    .sidebar.collapsed .sidebar-item.active { border-left: none; background: rgba(59,130,246,0.2); }
+    main { margin-left: 220px; transition: margin-left 0.3s ease; }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); width: 220px; }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .sidebar.collapsed { width: 220px; }
+      .sidebar.collapsed.mobile-open { width: 220px; }
+      .sidebar-toggle.active { display: flex; }
+      main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+<div id="sidebar" class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">🚛</div>
+    <div class="sidebar-title">Procure<span style="color:#60a5fa">AI</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="sidebar-item active" onclick="showPage('dashboard'); closeSidebarMobile()" data-page="dashboard">
+      <span class="sidebar-item-icon">📊</span>
+      <span class="sidebar-item-label">Dashboard</span>
+    </a>
+    <a href="#" class="sidebar-item" onclick="showPage('vendors'); closeSidebarMobile()" data-page="vendors">
+      <span class="sidebar-item-icon">🏢</span>
+      <span class="sidebar-item-label">Vendors</span>
+    </a>
+    <a href="#" class="sidebar-item" onclick="showPage('purchase-orders'); closeSidebarMobile()" data-page="purchase-orders">
+      <span class="sidebar-item-icon">📋</span>
+      <span class="sidebar-item-label">Purchase Orders</span>
+    </a>
+    <a href="#" class="sidebar-item" onclick="showPage('delivery'); closeSidebarMobile()" data-page="delivery">
+      <span class="sidebar-item-icon">🚚</span>
+      <span class="sidebar-item-label">Delivery</span>
+    </a>
+    <a href="#" class="sidebar-item" onclick="showPage('scorecard'); closeSidebarMobile()" data-page="scorecard">
+      <span class="sidebar-item-icon">⭐</span>
+      <span class="sidebar-item-label">Scorecard</span>
+    </a>
+    <a href="#" class="sidebar-item" onclick="showPage('ai-risk'); closeSidebarMobile()" data-page="ai-risk">
+      <span class="sidebar-item-icon">🤖</span>
+      <span class="sidebar-item-label">AI Risk</span>
+    </a>
+  </nav>
+  <div style="padding:1rem; border-top:1px solid #1a3870; display:flex; align-items:center; justify-content:center; flex-shrink:0">
+    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">JD</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SIDEBAR TOGGLE ═══════════════════════════ -->
+<button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()">
+  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+</button>
+
+<!-- ═══════════════════════════ PAGES CONTAINER ═══════════════════════════ -->
+<main class="max-w-screen-2xl mx-auto px-6 py-8">
+
+  <!-- ─────────── DASHBOARD PAGE ─────────── -->
+  <div id="page-dashboard" class="page active">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Supply Chain Dashboard</h1>
+        <p class="text-slate-400 text-sm mt-1">Real-time overview of your procurement operations</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="dashboard-date" class="text-slate-400 text-sm"></span>
+        <button onclick="showAddPOModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New PO
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+      <div class="card kpi-card kpi-card-vendors p-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Total Vendors</p>
+            <p class="text-3xl font-bold text-white"><span id="kpi-vendors" class="kpi-counter">—</span><span id="kpi-vendors-trend" class="kpi-trend"></span></p>
+            <p class="text-green-400 text-xs mt-2 font-medium">▲ 2 added this month</p>
+          </div>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.15)">
+            <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="card kpi-card kpi-card-open-pos p-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Open Purchase Orders</p>
+            <p class="text-3xl font-bold text-white"><span id="kpi-open-pos" class="kpi-counter">—</span><span id="kpi-open-pos-trend" class="kpi-trend"></span></p>
+            <p class="text-blue-400 text-xs mt-2 font-medium">Across all vendors</p>
+          </div>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.15)">
+            <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="card kpi-card kpi-card-overdue p-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Overdue Deliveries</p>
+            <p class="text-3xl font-bold text-white"><span id="kpi-overdue" class="kpi-counter">—</span><span id="kpi-overdue-trend" class="kpi-trend"></span></p>
+            <p class="text-red-400 text-xs mt-2 font-medium">Requires attention</p>
+          </div>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(239,68,68,0.15)">
+            <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="card kpi-card kpi-card-score p-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Avg Vendor Score</p>
+            <p class="text-3xl font-bold text-white"><span id="kpi-avg-score" class="kpi-counter">—</span><span id="kpi-avg-score-trend" class="kpi-trend"></span></p>
+            <p class="text-green-400 text-xs mt-2 font-medium">▲ +3.2 vs last quarter</p>
+          </div>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(34,197,94,0.15)">
+            <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart + Quick Stats -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-8">
+      <div class="xl:col-span-2 card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-base font-semibold text-white">Monthly Purchase Order Volume</h2>
+            <p class="text-slate-400 text-xs mt-0.5">Last 6 months</p>
+          </div>
+          <span class="badge badge-blue">Bar Chart</span>
+        </div>
+        <div style="height:240px;position:relative">
+          <canvas id="poChart"></canvas>
+          <div id="chart-fallback" class="chart-fallback absolute inset-0 flex items-center justify-center">
+            <div class="text-center">
+              <p class="text-slate-400 text-sm">Chart unavailable</p>
+              <p id="chart-text-summary" class="text-slate-300 text-xs mt-2"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-6">
+        <h2 class="text-base font-semibold text-white mb-5">PO Status Breakdown</h2>
+        <div id="status-breakdown" class="space-y-4"></div>
+        <div class="mt-6 pt-5 border-t border-navy-700" style="border-color:#1a3870">
+          <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">Top Vendor by Spend</p>
+          <p id="top-vendor" class="text-white font-semibold text-sm">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent POs Table -->
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-base font-semibold text-white">Recent Purchase Orders</h2>
+          <p class="text-slate-400 text-xs mt-0.5">Showing last 10 orders</p>
+        </div>
+        <button onclick="showPage('purchase-orders')" class="text-blue-400 text-sm hover:text-blue-300 transition-colors">View all →</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr style="border-bottom:1px solid #1a3870">
+              <th class="text-left text-slate-400 font-medium pb-3 pr-4">PO Number</th>
+              <th class="text-left text-slate-400 font-medium pb-3 pr-4">Vendor</th>
+              <th class="text-left text-slate-400 font-medium pb-3 pr-4">Date</th>
+              <th class="text-left text-slate-400 font-medium pb-3 pr-4">Total</th>
+              <th class="text-left text-slate-400 font-medium pb-3 pr-4">Status</th>
+              <th class="text-left text-slate-400 font-medium pb-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recent-po-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── VENDORS PAGE ─────────── -->
+  <div id="page-vendors" class="page">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Vendor Management</h1>
+        <p class="text-slate-400 text-sm mt-1">Manage supplier relationships and profiles</p>
+      </div>
+      <button onclick="showAddVendorModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Vendor
+      </button>
+    </div>
+    <div class="card mb-5 p-4">
+      <div class="flex flex-wrap gap-3 items-center">
+        <input id="vendor-search" type="text" placeholder="Search vendors by name or category..." style="max-width:320px" oninput="renderVendors()" />
+        <select id="vendor-filter-status" onchange="renderVendors()" style="max-width:160px">
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Pending">Pending</option>
+        </select>
+        <select id="vendor-filter-category" onchange="renderVendors()" style="max-width:180px">
+          <option value="">All Categories</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Logistics">Logistics</option>
+          <option value="Manufacturing">Manufacturing</option>
+          <option value="Packaging">Packaging</option>
+          <option value="Raw Materials">Raw Materials</option>
+          <option value="Software">Software</option>
+        </select>
+      </div>
+    </div>
+    <div id="vendors-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+  </div>
+
+  <!-- ─────────── PURCHASE ORDERS PAGE ─────────── -->
+  <div id="page-purchase-orders" class="page">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Purchase Orders</h1>
+        <p class="text-slate-400 text-sm mt-1">Track and manage all procurement orders</p>
+      </div>
+      <button onclick="showAddPOModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Create PO
+      </button>
+    </div>
+    <div class="card mb-5 p-4">
+      <div class="flex flex-wrap gap-3 items-center">
+        <input id="po-search" type="text" placeholder="Search PO number or vendor..." style="max-width:280px" oninput="renderPOs()" />
+        <select id="po-filter-status" onchange="renderPOs()" style="max-width:160px">
+          <option value="">All Status</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="In Transit">In Transit</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+        <div class="flex gap-3 ml-auto">
+          <span id="po-total-count" class="text-slate-400 text-sm self-center"></span>
+        </div>
+      </div>
+    </div>
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr style="background:#142d5a">
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">PO Number</th>
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">Vendor</th>
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">Date</th>
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">Expected Delivery</th>
+              <th class="text-right text-slate-300 font-semibold px-5 py-3">Total</th>
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">Status</th>
+              <th class="text-left text-slate-300 font-semibold px-5 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="po-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── DELIVERY PAGE ─────────── -->
+  <div id="page-delivery" class="page">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Delivery Tracking</h1>
+        <p class="text-slate-400 text-sm mt-1">Monitor inbound shipments and delivery status</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div class="card p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-2">In Transit</p>
+        <p id="delivery-in-transit" class="text-3xl font-bold text-blue-400">—</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-2">Delivered This Month</p>
+        <p id="delivery-delivered" class="text-3xl font-bold text-green-400">—</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-2">Overdue</p>
+        <p id="delivery-overdue" class="text-3xl font-bold text-red-400">—</p>
+      </div>
+    </div>
+    <div class="card p-6">
+      <h2 class="text-base font-semibold text-white mb-5">Active Shipments</h2>
+      <div id="delivery-list" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ─────────── SCORECARD PAGE ─────────── -->
+  <div id="page-scorecard" class="page">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Vendor Scorecard</h1>
+        <p class="text-slate-400 text-sm mt-1">Performance ratings and evaluation metrics</p>
+      </div>
+      <button onclick="showRateVendorModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+        Rate Vendor
+      </button>
+    </div>
+    <div id="scorecard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+  </div>
+
+  <!-- ─────────── AI RISK PAGE ─────────── -->
+  <div id="page-ai-risk" class="page">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">AI Risk Intelligence</h1>
+        <p class="text-slate-400 text-sm mt-1">Predictive risk analysis for your supply chain</p>
+      </div>
+      <button onclick="runRiskAnalysis()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        Run Analysis
+      </button>
+    </div>
+    <div id="risk-grid" class="grid grid-cols-1 xl:grid-cols-3 gap-5"></div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════ MODALS ═══════════════════════════ -->
+
+<!-- Add PO Modal -->
+<div id="modal-add-po" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+  <div class="card w-full max-w-lg mx-4 p-6 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-white">Create Purchase Order</h3>
+      <button onclick="closeModal('modal-add-po')" class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Vendor</label>
+        <select id="po-vendor"></select></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Order Date</label>
+          <input type="date" id="po-date" /></div>
+        <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Expected Delivery</label>
+          <input type="date" id="po-delivery" /></div>
+      </div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Total Amount ($)</label>
+        <input type="number" id="po-total" placeholder="0.00" min="0" step="0.01" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Description</label>
+        <textarea id="po-desc" rows="2" placeholder="Order description..."></textarea></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Status</label>
+        <select id="po-status">
+          <option>Pending</option>
+          <option>Approved</option>
+          <option>In Transit</option>
+          <option>Delivered</option>
+          <option>Cancelled</option>
+        </select></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeModal('modal-add-po')" class="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors">Cancel</button>
+      <button onclick="savePO()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">Create PO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Vendor Modal -->
+<div id="modal-add-vendor" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+  <div class="card w-full max-w-lg mx-4 p-6 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-white">Add Vendor</h3>
+      <button onclick="closeModal('modal-add-vendor')" class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Vendor Name</label>
+        <input type="text" id="v-name" placeholder="Company name..." /></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Category</label>
+          <select id="v-category">
+            <option>Electronics</option>
+            <option>Logistics</option>
+            <option>Manufacturing</option>
+            <option>Packaging</option>
+            <option>Raw Materials</option>
+            <option>Software</option>
+          </select></div>
+        <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Status</label>
+          <select id="v-status">
+            <option>Active</option>
+            <option>Pending</option>
+            <option>Inactive</option>
+          </select></div>
+      </div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Contact Email</label>
+        <input type="email" id="v-email" placeholder="contact@vendor.com" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Phone</label>
+        <input type="text" id="v-phone" placeholder="+1 (555) 000-0000" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Country</label>
+        <input type="text" id="v-country" placeholder="United States" /></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeModal('modal-add-vendor')" class="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors">Cancel</button>
+      <button onclick="saveVendor()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">Add Vendor</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rate Vendor Modal -->
+<div id="modal-rate-vendor" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+  <div class="card w-full max-w-md mx-4 p-6 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-white">Rate Vendor</h3>
+      <button onclick="closeModal('modal-rate-vendor')" class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Vendor</label>
+        <select id="rate-vendor"></select></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Quality Score (0–100)</label>
+        <input type="number" id="rate-quality" min="0" max="100" placeholder="85" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Delivery Score (0–100)</label>
+        <input type="number" id="rate-delivery" min="0" max="100" placeholder="90" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Communication Score (0–100)</label>
+        <input type="number" id="rate-comms" min="0" max="100" placeholder="80" /></div>
+      <div><label class="block text-slate-400 text-xs font-medium mb-1.5">Notes</label>
+        <textarea id="rate-notes" rows="2" placeholder="Performance notes..."></textarea></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeModal('modal-rate-vendor')" class="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors">Cancel</button>
+      <button onclick="saveRating()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">Save Rating</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ CHART.JS ═══════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- ═══════════════════════════ APP SCRIPT ═══════════════════════════ -->
+<script>
+// ─── Data Layer ─────────────────────────────────────────────────────────────
+
+function getVendors()        { return JSON.parse(localStorage.getItem('vendors') || '[]'); }
+function getPOs()            { return JSON.parse(localStorage.getItem('purchaseOrders') || '[]'); }
+function getRatings()        { return JSON.parse(localStorage.getItem('vendorRatings') || '[]'); }
+function saveVendors(d)      { localStorage.setItem('vendors', JSON.stringify(d)); }
+function savePOs(d)          { localStorage.setItem('purchaseOrders', JSON.stringify(d)); }
+function saveRatings(d)      { localStorage.setItem('vendorRatings', JSON.stringify(d)); }
+
+function genId() { return 'id_' + Math.random().toString(36).slice(2, 10); }
+
+function seedData() {
+  if (getVendors().length > 0) return;
+
+  const vendors = [
+    { id: 'v1', name: 'Nexus Electronics Co.', category: 'Electronics', status: 'Active', email: 'supply@nexuselectronics.com', phone: '+1 (408) 555-0142', country: 'United States', joined: '2023-03-15' },
+    { id: 'v2', name: 'SwiftLogistics GmbH', category: 'Logistics', status: 'Active', email: 'ops@swiftlogistics.de', phone: '+49 30 5550183', country: 'Germany', joined: '2022-11-08' },
+    { id: 'v3', name: 'Pacific Packaging Ltd.', category: 'Packaging', status: 'Active', email: 'orders@pacpkg.com', phone: '+852 2555-0198', country: 'Hong Kong', joined: '2023-07-22' },
+    { id: 'v4', name: 'Apex Raw Materials Inc.', category: 'Raw Materials', status: 'Pending', email: 'procurement@apexrm.com', phone: '+1 (713) 555-0267', country: 'United States', joined: '2024-01-10' },
+    { id: 'v5', name: 'TechBridge Solutions', category: 'Software', status: 'Active', email: 'sales@techbridge.io', phone: '+44 20 5550394', country: 'United Kingdom', joined: '2023-09-05' },
+  ];
+
+  const pos = [
+    { id: genId(), poNumber: 'PO-2024-0891', vendorId: 'v1', vendorName: 'Nexus Electronics Co.', date: '2024-11-01', deliveryDate: '2024-11-20', total: 48500.00, description: 'Q4 component batch — PCBs & microcontrollers', status: 'Delivered' },
+    { id: genId(), poNumber: 'PO-2024-0892', vendorId: 'v2', vendorName: 'SwiftLogistics GmbH', date: '2024-11-05', deliveryDate: '2024-11-25', total: 12300.00, description: 'Freight forwarding services — November', status: 'In Transit' },
+    { id: genId(), poNumber: 'PO-2024-0893', vendorId: 'v3', vendorName: 'Pacific Packaging Ltd.', date: '2024-11-08', deliveryDate: '2024-11-18', total: 9750.00, description: 'Custom branded boxes — 5000 units', status: 'Delivered' },
+    { id: genId(), poNumber: 'PO-2024-0894', vendorId: 'v4', vendorName: 'Apex Raw Materials Inc.', date: '2024-11-12', deliveryDate: '2024-12-05', total: 31200.00, description: 'Aluminum ingots — Grade A6061', status: 'Approved' },
+    { id: genId(), poNumber: 'PO-2024-0895', vendorId: 'v5', vendorName: 'TechBridge Solutions', date: '2024-11-14', deliveryDate: '2024-11-21', total: 7800.00, description: 'Annual SaaS subscription renewal', status: 'Pending' },
+    { id: genId(), poNumber: 'PO-2024-0896', vendorId: 'v1', vendorName: 'Nexus Electronics Co.', date: '2024-10-02', deliveryDate: '2024-10-22', total: 52100.00, description: 'Sensor modules — October batch', status: 'Delivered' },
+    { id: genId(), poNumber: 'PO-2024-0897', vendorId: 'v2', vendorName: 'SwiftLogistics GmbH', date: '2024-09-15', deliveryDate: '2024-09-28', total: 8600.00, description: 'Express air freight — urgent order', status: 'Delivered' },
+    { id: genId(), poNumber: 'PO-2024-0898', vendorId: 'v3', vendorName: 'Pacific Packaging Ltd.', date: '2024-11-19', deliveryDate: '2024-11-10', total: 4200.00, description: 'Protective foam inserts — bulk order', status: 'In Transit' },
+  ];
+
+  const ratings = [
+    { id: genId(), vendorId: 'v1', vendorName: 'Nexus Electronics Co.', quality: 92, delivery: 88, communication: 85, date: '2024-10-31', notes: 'Consistent quality, minor delays on last shipment.' },
+    { id: genId(), vendorId: 'v2', vendorName: 'SwiftLogistics GmbH', quality: 87, delivery: 95, communication: 90, date: '2024-10-28', notes: 'Excellent delivery times, proactive comms.' },
+    { id: genId(), vendorId: 'v3', vendorName: 'Pacific Packaging Ltd.', quality: 83, delivery: 80, communication: 78, date: '2024-10-25', notes: 'Average delivery, improving quality controls.' },
+    { id: genId(), vendorId: 'v5', vendorName: 'TechBridge Solutions', quality: 96, delivery: 99, communication: 94, date: '2024-11-01', notes: 'Outstanding digital delivery and support.' },
+  ];
+
+  saveVendors(vendors);
+  savePOs(pos);
+  saveRatings(ratings);
+}
+
+// ─── Sidebar Navigation ──────────────────────────────────────────────────────
+
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(l => l.classList.remove('active'));
+  const item = document.querySelector(`[data-page="${pageId}"]`);
+  if (item) item.classList.add('active');
+
+  if (pageId === 'dashboard') renderDashboard();
+  if (pageId === 'vendors') renderVendors();
+  if (pageId === 'purchase-orders') renderPOs();
+  if (pageId === 'delivery') renderDelivery();
+  if (pageId === 'scorecard') renderScorecard();
+  if (pageId === 'ai-risk') renderAIRisk();
+  return false;
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    sidebar.classList.toggle('mobile-open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function closeSidebarMobile() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+  }
+}
+
+window.addEventListener('resize', () => {
+  const sidebar = document.getElementById('sidebar');
+  if (window.innerWidth > 768) {
+    sidebar.classList.remove('mobile-open');
+  } else if (!sidebar.classList.contains('mobile-open')) {
+    sidebar.classList.add('collapsed');
+  }
+});
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatCurrency(n) {
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function badgeHtml(status) {
+  const map = {
+    'Delivered': 'badge-green',
+    'Active': 'badge-green',
+    'Approved': 'badge-blue',
+    'In Transit': 'badge-blue',
+    'Pending': 'badge-yellow',
+    'Cancelled': 'badge-gray',
+    'Inactive': 'badge-gray',
+    'Overdue': 'badge-red',
+    'High': 'badge-red',
+    'Medium': 'badge-yellow',
+    'Low': 'badge-green',
+  };
+  return `<span class="badge ${map[status] || 'badge-gray'}">${status}</span>`;
+}
+
+function scoreColor(n) {
+  if (n >= 85) return '#4ade80';
+  if (n >= 70) return '#facc15';
+  return '#f87171';
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ─── KPI Animation ───────────────────────────────────────────────────────────
+
+function animateKPICounter(elementId, targetValue, duration = 1500) {
+  if (targetValue === 0) {
+    document.getElementById(elementId).textContent = '0';
+    return;
+  }
+
+  const el = document.getElementById(elementId);
+  const startTime = performance.now();
+
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const currentValue = Math.floor(progress * targetValue);
+    el.textContent = currentValue;
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      el.textContent = targetValue;
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function setTrendArrow(elementId, currentValue, previousValue) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const change = currentValue - previousValue;
+  const changePercent = previousValue > 0 ? Math.round((change / previousValue) * 100) : 0;
+
+  if (change > 0) {
+    el.innerHTML = `<span class="kpi-trend up">↑ +${changePercent}%</span>`;
+  } else if (change < 0) {
+    el.innerHTML = `<span class="kpi-trend down">↓ ${changePercent}%</span>`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
+let poChart = null;
+
+function renderDashboard() {
+  const vendors = getVendors();
+  const pos = getPOs();
+  const ratings = getRatings();
+
+  const vendorCount = vendors.length;
+  const openPOsCount = pos.filter(p => !['Delivered', 'Cancelled'].includes(p.status)).length;
+  const today = new Date();
+  const overdueCount = pos.filter(p => {
+    if (['Delivered', 'Cancelled'].includes(p.status)) return false;
+    return p.deliveryDate && new Date(p.deliveryDate) < today;
+  }).length;
+
+  let avgScore = 0;
+  if (ratings.length > 0) {
+    const scores = ratings.map(r => (r.quality + r.delivery + r.communication) / 3);
+    avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+  }
+
+  animateKPICounter('kpi-vendors', vendorCount, 1500);
+  animateKPICounter('kpi-open-pos', openPOsCount, 1500);
+  animateKPICounter('kpi-overdue', overdueCount, 1500);
+
+  const scoreDisplay = avgScore > 0 ? avgScore.toFixed(1) + '/100' : 'N/A';
+  if (avgScore > 0) {
+    document.getElementById('kpi-avg-score').textContent = '';
+    const el = document.getElementById('kpi-avg-score');
+    const startTime = performance.now();
+    function animateScore(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / 1500, 1);
+      const currentVal = progress * avgScore;
+      el.textContent = currentVal.toFixed(1) + '/100';
+      if (progress < 1) requestAnimationFrame(animateScore);
+      else el.textContent = scoreDisplay;
+    }
+    requestAnimationFrame(animateScore);
+  } else {
+    document.getElementById('kpi-avg-score').textContent = 'N/A';
+  }
+
+  setTrendArrow('kpi-vendors-trend', vendorCount, Math.max(0, vendorCount - 2));
+  setTrendArrow('kpi-open-pos-trend', openPOsCount, Math.max(0, openPOsCount - 1));
+  setTrendArrow('kpi-overdue-trend', overdueCount, Math.max(0, overdueCount + 1));
+  setTrendArrow('kpi-avg-score-trend', avgScore > 0 ? Math.round(avgScore) : 0, Math.max(0, Math.round(avgScore) - 3));
+
+  document.getElementById('dashboard-date').textContent = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  renderPOChart(pos);
+
+  const statuses = ['Pending', 'Approved', 'In Transit', 'Delivered', 'Cancelled'];
+  const colors = { 'Pending': '#facc15', 'Approved': '#60a5fa', 'In Transit': '#60a5fa', 'Delivered': '#4ade80', 'Cancelled': '#94a3b8' };
+  const container = document.getElementById('status-breakdown');
+  container.innerHTML = statuses.map(s => {
+    const count = pos.filter(p => p.status === s).length;
+    const pct = pos.length > 0 ? Math.round((count / pos.length) * 100) : 0;
+    return `<div>
+      <div class="flex justify-between text-xs mb-1">
+        <span class="text-slate-300">${s}</span>
+        <span class="text-slate-400">${count} (${pct}%)</span>
+      </div>
+      <div class="score-bar"><div class="score-fill" style="width:${pct}%;background:${colors[s]}"></div></div>
+    </div>`;
+  }).join('');
+
+  const spendByVendor = {};
+  pos.forEach(p => { spendByVendor[p.vendorName] = (spendByVendor[p.vendorName] || 0) + p.total; });
+  const topVendor = Object.entries(spendByVendor).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('top-vendor').textContent = topVendor ? `${topVendor[0]} — ${formatCurrency(topVendor[1])}` : 'N/A';
+
+  const tbody = document.getElementById('recent-po-tbody');
+  const recent = [...pos].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+  tbody.innerHTML = recent.map(p => `
+    <tr style="border-bottom:1px solid #1a3870">
+      <td class="py-3 pr-4 font-mono text-blue-300 text-xs">${p.poNumber}</td>
+      <td class="py-3 pr-4 text-slate-200">${p.vendorName}</td>
+      <td class="py-3 pr-4 text-slate-400">${p.date}</td>
+      <td class="py-3 pr-4 text-white font-medium">${formatCurrency(p.total)}</td>
+      <td class="py-3 pr-4">${badgeHtml(p.status)}</td>
+      <td class="py-3"><button onclick="deletePO('${p.id}')" class="text-slate-500 hover:text-red-400 transition-colors text-xs">Remove</button></td>
+    </tr>
+  `).join('') || `<tr><td colspan="6" class="py-8 text-center text-slate-500">No purchase orders yet.</td></tr>`;
+}
+
+function renderPOChart(pos) {
+  try {
+    if (typeof Chart === 'undefined') throw new Error('Chart.js not loaded');
+    const months = [];
+    const counts = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      months.push(label);
+      const count = pos.filter(p => {
+        const pd = new Date(p.date);
+        return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
+      }).length;
+      counts.push(count);
+    }
+
+    const ctx = document.getElementById('poChart').getContext('2d');
+    if (poChart) poChart.destroy();
+    poChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [{
+          label: 'Purchase Orders',
+          data: counts,
+          backgroundColor: 'rgba(59,130,246,0.7)',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f2244',
+            borderColor: '#1a3870',
+            borderWidth: 1,
+            titleColor: '#94a3b8',
+            bodyColor: '#f8fafc',
+            padding: 10,
+          },
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#64748b', font: { size: 11 } },
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            ticks: { color: '#64748b', font: { size: 11 }, stepSize: 1, precision: 0 },
+          },
+        },
+      },
+    });
+  } catch (e) {
+    document.getElementById('chart-fallback').style.display = 'flex';
+    document.getElementById('poChart').style.display = 'none';
+    const pos2 = getPOs();
+    document.getElementById('chart-text-summary').textContent = `Total POs: ${pos2.length} | Open: ${pos2.filter(p => !['Delivered','Cancelled'].includes(p.status)).length}`;
+  }
+}
+
+// ─── Vendors ─────────────────────────────────────────────────────────────────
+
+function renderVendors() {
+  const search = (document.getElementById('vendor-search')?.value || '').toLowerCase();
+  const filterStatus = document.getElementById('vendor-filter-status')?.value || '';
+  const filterCat = document.getElementById('vendor-filter-category')?.value || '';
+  const vendors = getVendors().filter(v => {
+    const matchText = v.name.toLowerCase().includes(search) || v.category.toLowerCase().includes(search);
+    const matchStatus = !filterStatus || v.status === filterStatus;
+    const matchCat = !filterCat || v.category === filterCat;
+    return matchText && matchStatus && matchCat;
+  });
+
+  const ratings = getRatings();
+  const getAvgScore = (vendorId) => {
+    const r = ratings.filter(r => r.vendorId === vendorId);
+    if (!r.length) return null;
+    return r.reduce((sum, x) => sum + (x.quality + x.delivery + x.communication) / 3, 0) / r.length;
+  };
+
+  const pos = getPOs();
+
+  const grid = document.getElementById('vendors-grid');
+  grid.innerHTML = vendors.map(v => {
+    const score = getAvgScore(v.id);
+    const vPos = pos.filter(p => p.vendorId === v.id);
+    const spend = vPos.reduce((s, p) => s + p.total, 0);
+    const categoryColors = {
+      Electronics: '#3b82f6', Logistics: '#06b6d4', Manufacturing: '#8b5cf6',
+      Packaging: '#f59e0b', 'Raw Materials': '#10b981', Software: '#ec4899',
+    };
+    const catColor = categoryColors[v.category] || '#64748b';
+    return `
+    <div class="card p-5 hover:border-blue-700 transition-colors" style="cursor:default">
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm" style="background:${catColor}22;color:${catColor}">
+            ${v.name.charAt(0)}
+          </div>
+          <div>
+            <p class="font-semibold text-white text-sm">${v.name}</p>
+            <p class="text-slate-400 text-xs">${v.country}</p>
+          </div>
+        </div>
+        ${badgeHtml(v.status)}
+      </div>
+      <div class="space-y-2 mb-4">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-400">Category</span>
+          <span class="font-medium" style="color:${catColor}">${v.category}</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-400">Total Spend</span>
+          <span class="text-white font-medium">${formatCurrency(spend)}</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-400">PO Count</span>
+          <span class="text-white">${vPos.length}</span>
+        </div>
+        ${score !== null ? `
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">Vendor Score</span>
+            <span style="color:${scoreColor(score)}" class="font-semibold">${score.toFixed(1)}/100</span>
+          </div>
+          <div class="score-bar"><div class="score-fill" style="width:${score}%;background:${scoreColor(score)}"></div></div>
+        </div>` : `<div class="text-xs text-slate-500">No rating yet</div>`}
+      </div>
+      <div class="flex items-center justify-between pt-3 border-t" style="border-color:#1a3870">
+        <span class="text-slate-500 text-xs">${v.email}</span>
+        <button onclick="deleteVendor('${v.id}')" class="text-slate-500 hover:text-red-400 transition-colors text-xs">Remove</button>
+      </div>
+    </div>`;
+  }).join('') || `<div class="col-span-3 card p-12 text-center text-slate-500">No vendors found.</div>`;
+}
+
+function showAddVendorModal() {
+  document.getElementById('v-name').value = '';
+  document.getElementById('v-email').value = '';
+  document.getElementById('v-phone').value = '';
+  document.getElementById('v-country').value = '';
+  document.getElementById('modal-add-vendor').classList.remove('hidden');
+}
+
+function saveVendor() {
+  const name = document.getElementById('v-name').value.trim();
+  if (!name) { alert('Please enter a vendor name.'); return; }
+  const vendors = getVendors();
+  vendors.push({
+    id: genId(),
+    name,
+    category: document.getElementById('v-category').value,
+    status: document.getElementById('v-status').value,
+    email: document.getElementById('v-email').value.trim(),
+    phone: document.getElementById('v-phone').value.trim(),
+    country: document.getElementById('v-country').value.trim() || 'Unknown',
+    joined: new Date().toISOString().slice(0, 10),
+  });
+  saveVendors(vendors);
+  closeModal('modal-add-vendor');
+  renderVendors();
+}
+
+function deleteVendor(id) {
+  if (!confirm('Remove this vendor?')) return;
+  saveVendors(getVendors().filter(v => v.id !== id));
+  renderVendors();
+}
+
+// ─── Purchase Orders ─────────────────────────────────────────────────────────
+
+function renderPOs() {
+  const search = (document.getElementById('po-search')?.value || '').toLowerCase();
+  const filterStatus = document.getElementById('po-filter-status')?.value || '';
+  const pos = getPOs().filter(p => {
+    const matchText = p.poNumber.toLowerCase().includes(search) || p.vendorName.toLowerCase().includes(search);
+    const matchStatus = !filterStatus || p.status === filterStatus;
+    return matchText && matchStatus;
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  document.getElementById('po-total-count').textContent = `${pos.length} orders`;
+
+  const tbody = document.getElementById('po-tbody');
+  tbody.innerHTML = pos.map(p => `
+    <tr style="border-bottom:1px solid #1a3870">
+      <td class="px-5 py-3 font-mono text-blue-300 text-xs">${p.poNumber}</td>
+      <td class="px-5 py-3 text-slate-200 text-sm">${p.vendorName}</td>
+      <td class="px-5 py-3 text-slate-400 text-sm">${p.date}</td>
+      <td class="px-5 py-3 text-slate-400 text-sm">${p.deliveryDate || '—'}</td>
+      <td class="px-5 py-3 text-right text-white font-medium text-sm">${formatCurrency(p.total)}</td>
+      <td class="px-5 py-3">${badgeHtml(p.status)}</td>
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-3">
+          <select onchange="updatePOStatus('${p.id}', this.value)" style="padding:3px 8px;font-size:11px;width:auto;min-width:110px">
+            ${['Pending','Approved','In Transit','Delivered','Cancelled'].map(s => `<option ${s===p.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <button onclick="deletePO('${p.id}')" class="text-slate-500 hover:text-red-400 transition-colors text-xs">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="7" class="py-12 text-center text-slate-500">No purchase orders found.</td></tr>`;
+}
+
+function showAddPOModal() {
+  const vendors = getVendors();
+  const sel = document.getElementById('po-vendor');
+  sel.innerHTML = vendors.map(v => `<option value="${v.id}" data-name="${v.name}">${v.name}</option>`).join('');
+  if (!vendors.length) sel.innerHTML = '<option value="">No vendors — add one first</option>';
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('po-date').value = today;
+  document.getElementById('po-delivery').value = '';
+  document.getElementById('po-total').value = '';
+  document.getElementById('po-desc').value = '';
+  document.getElementById('modal-add-po').classList.remove('hidden');
+}
+
+function savePO() {
+  const vendorSel = document.getElementById('po-vendor');
+  if (!vendorSel.value) { alert('Please select a vendor.'); return; }
+  const vendorName = vendorSel.options[vendorSel.selectedIndex].dataset.name || vendorSel.options[vendorSel.selectedIndex].text;
+  const total = parseFloat(document.getElementById('po-total').value);
+  if (isNaN(total) || total <= 0) { alert('Please enter a valid total amount.'); return; }
+
+  const pos = getPOs();
+  const lastNum = pos.reduce((max, p) => {
+    const n = parseInt(p.poNumber.split('-')[2] || 0);
+    return n > max ? n : max;
+  }, 890);
+  const poNumber = `PO-${new Date().getFullYear()}-${String(lastNum + 1).padStart(4, '0')}`;
+
+  pos.push({
+    id: genId(), poNumber, vendorId: vendorSel.value, vendorName,
+    date: document.getElementById('po-date').value,
+    deliveryDate: document.getElementById('po-delivery').value,
+    total,
+    description: document.getElementById('po-desc').value.trim(),
+    status: document.getElementById('po-status').value,
+  });
+  savePOs(pos);
+  closeModal('modal-add-po');
+  renderPOs();
+  renderDashboard();
+}
+
+function updatePOStatus(id, status) {
+  const pos = getPOs();
+  const idx = pos.findIndex(p => p.id === id);
+  if (idx !== -1) { pos[idx].status = status; savePOs(pos); renderDashboard(); }
+}
+
+function deletePO(id) {
+  if (!confirm('Delete this purchase order?')) return;
+  savePOs(getPOs().filter(p => p.id !== id));
+  renderPOs();
+  renderDashboard();
+}
+
+// ─── Delivery ────────────────────────────────────────────────────────────────
+
+function renderDelivery() {
+  const pos = getPOs();
+  const today = new Date();
+
+  const inTransit = pos.filter(p => p.status === 'In Transit');
+  const delivered = pos.filter(p => {
+    if (p.status !== 'Delivered') return false;
+    const d = new Date(p.deliveryDate);
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  });
+  const overdue = pos.filter(p => {
+    if (['Delivered','Cancelled'].includes(p.status)) return false;
+    return p.deliveryDate && new Date(p.deliveryDate) < today;
+  });
+
+  document.getElementById('delivery-in-transit').textContent = inTransit.length;
+  document.getElementById('delivery-delivered').textContent = delivered.length;
+  document.getElementById('delivery-overdue').textContent = overdue.length;
+
+  const active = pos.filter(p => !['Delivered','Cancelled'].includes(p.status))
+    .sort((a, b) => new Date(a.deliveryDate || '9999') - new Date(b.deliveryDate || '9999'));
+
+  const list = document.getElementById('delivery-list');
+  list.innerHTML = active.map(p => {
+    const dDate = p.deliveryDate ? new Date(p.deliveryDate) : null;
+    const isOverdue = dDate && dDate < today;
+    const daysLabel = dDate
+      ? (isOverdue
+        ? `${Math.floor((today - dDate) / 86400000)}d overdue`
+        : `Due in ${Math.floor((dDate - today) / 86400000)}d`)
+      : 'No date set';
+    return `
+    <div class="flex items-center justify-between p-4 rounded-xl" style="background:#142d5a">
+      <div class="flex items-center gap-4">
+        <div class="w-2 h-2 rounded-full ${isOverdue ? 'bg-red-400' : p.status === 'In Transit' ? 'bg-blue-400' : 'bg-yellow-400'}"></div>
+        <div>
+          <p class="text-white text-sm font-medium">${p.poNumber}</p>
+          <p class="text-slate-400 text-xs">${p.vendorName} · ${p.description || 'No description'}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-xs ${isOverdue ? 'text-red-400' : 'text-slate-400'} font-medium">${daysLabel}</span>
+        ${badgeHtml(isOverdue ? 'Overdue' : p.status)}
+      </div>
+    </div>`;
+  }).join('') || `<p class="text-center text-slate-500 py-8">All deliveries are complete.</p>`;
+}
+
+// ─── Scorecard ───────────────────────────────────────────────────────────────
+
+function renderScorecard() {
+  const vendors = getVendors();
+  const ratings = getRatings();
+
+  const grid = document.getElementById('scorecard-grid');
+  grid.innerHTML = vendors.map(v => {
+    const vRatings = ratings.filter(r => r.vendorId === v.id);
+    const latest = vRatings.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    const avg = latest ? (latest.quality + latest.delivery + latest.communication) / 3 : null;
+
+    return `
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="font-semibold text-white">${v.name}</p>
+          <p class="text-slate-400 text-xs">${v.category}</p>
+        </div>
+        ${avg !== null ? `<span class="text-2xl font-bold" style="color:${scoreColor(avg)}">${avg.toFixed(0)}</span>` : '<span class="text-slate-500 text-sm">Unrated</span>'}
+      </div>
+      ${latest ? `
+      <div class="space-y-3">
+        ${[['Quality', latest.quality], ['Delivery', latest.delivery], ['Communication', latest.communication]].map(([label, val]) => `
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400">${label}</span>
+              <span style="color:${scoreColor(val)}" class="font-medium">${val}</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" style="width:${val}%;background:${scoreColor(val)}"></div></div>
+          </div>
+        `).join('')}
+        ${latest.notes ? `<p class="text-slate-500 text-xs italic mt-3 pt-3 border-t" style="border-color:#1a3870">"${latest.notes}"</p>` : ''}
+        <p class="text-slate-600 text-xs">Last rated: ${latest.date}</p>
+      </div>` : `
+      <p class="text-slate-500 text-sm text-center py-4">No ratings yet.<br>
+        <button onclick="prefillRateVendor('${v.id}', '${v.name}')" class="text-blue-400 hover:text-blue-300 text-xs mt-1">Rate this vendor →</button>
+      </p>`}
+    </div>`;
+  }).join('') || `<div class="col-span-3 card p-12 text-center text-slate-500">No vendors found.</div>`;
+}
+
+function showRateVendorModal() {
+  const vendors = getVendors();
+  const sel = document.getElementById('rate-vendor');
+  sel.innerHTML = vendors.map(v => `<option value="${v.id}" data-name="${v.name}">${v.name}</option>`).join('');
+  document.getElementById('rate-quality').value = '';
+  document.getElementById('rate-delivery').value = '';
+  document.getElementById('rate-comms').value = '';
+  document.getElementById('rate-notes').value = '';
+  document.getElementById('modal-rate-vendor').classList.remove('hidden');
+}
+
+function prefillRateVendor(id, name) {
+  showRateVendorModal();
+  const sel = document.getElementById('rate-vendor');
+  for (const opt of sel.options) { if (opt.value === id) { opt.selected = true; break; } }
+}
+
+function saveRating() {
+  const sel = document.getElementById('rate-vendor');
+  if (!sel.value) { alert('Select a vendor.'); return; }
+  const quality = parseInt(document.getElementById('rate-quality').value);
+  const delivery = parseInt(document.getElementById('rate-delivery').value);
+  const comms = parseInt(document.getElementById('rate-comms').value);
+  if ([quality, delivery, comms].some(n => isNaN(n) || n < 0 || n > 100)) {
+    alert('Please enter valid scores (0–100) for all fields.'); return;
+  }
+  const ratings = getRatings();
+  ratings.push({
+    id: genId(),
+    vendorId: sel.value,
+    vendorName: sel.options[sel.selectedIndex].text,
+    quality, delivery, communication: comms,
+    date: new Date().toISOString().slice(0, 10),
+    notes: document.getElementById('rate-notes').value.trim(),
+  });
+  saveRatings(ratings);
+  closeModal('modal-rate-vendor');
+  renderScorecard();
+  renderDashboard();
+}
+
+// ─── AI Risk ─────────────────────────────────────────────────────────────────
+
+function renderAIRisk() {
+  const vendors = getVendors();
+  const pos = getPOs();
+  const ratings = getRatings();
+  const today = new Date();
+
+  const riskItems = vendors.map(v => {
+    const vPos = pos.filter(p => p.vendorId === v.id);
+    const vRatings = ratings.filter(r => r.vendorId === v.id);
+    const latestRating = vRatings.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+    let score = 0;
+    const factors = [];
+
+    const overduePOs = vPos.filter(p => !['Delivered','Cancelled'].includes(p.status) && p.deliveryDate && new Date(p.deliveryDate) < today);
+    if (overduePOs.length > 0) { score += 30; factors.push({ label: `${overduePOs.length} overdue PO(s)`, impact: 'high' }); }
+
+    if (latestRating) {
+      const avg = (latestRating.quality + latestRating.delivery + latestRating.communication) / 3;
+      if (avg < 70) { score += 25; factors.push({ label: `Low performance score (${avg.toFixed(0)}/100)`, impact: 'high' }); }
+      else if (avg < 85) { score += 10; factors.push({ label: `Moderate performance score (${avg.toFixed(0)}/100)`, impact: 'medium' }); }
+    } else {
+      score += 15; factors.push({ label: 'No vendor rating on file', impact: 'medium' });
+    }
+
+    if (v.status === 'Inactive') { score += 30; factors.push({ label: 'Vendor is inactive', impact: 'high' }); }
+    if (v.status === 'Pending') { score += 10; factors.push({ label: 'Vendor approval pending', impact: 'medium' }); }
+
+    const spend = vPos.reduce((s, p) => s + p.total, 0);
+    const totalSpend = pos.reduce((s, p) => s + p.total, 0);
+    if (totalSpend > 0 && spend / totalSpend > 0.4) { score += 20; factors.push({ label: `High spend concentration (${Math.round(spend/totalSpend*100)}%)`, impact: 'medium' }); }
+
+    score = Math.min(score, 100);
+    const riskLevel = score >= 50 ? 'High' : score >= 25 ? 'Medium' : 'Low';
+    return { vendor: v, score, riskLevel, factors };
+  }).sort((a, b) => b.score - a.score);
+
+  const grid = document.getElementById('risk-grid');
+  if (riskItems.length === 0) {
+    grid.innerHTML = `<div class="xl:col-span-3 card p-12 text-center text-slate-500">Add vendors to see risk analysis.</div>`;
+    return;
+  }
+
+  const riskColors = { High: '#f87171', Medium: '#facc15', Low: '#4ade80' };
+  grid.innerHTML = riskItems.map(item => `
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="font-semibold text-white">${item.vendor.name}</p>
+          <p class="text-slate-400 text-xs">${item.vendor.category}</p>
+        </div>
+        ${badgeHtml(item.riskLevel)}
+      </div>
+      <div class="mb-4">
+        <div class="flex justify-between text-xs mb-2">
+          <span class="text-slate-400">Risk Score</span>
+          <span style="color:${riskColors[item.riskLevel]}" class="font-bold">${item.score}/100</span>
+        </div>
+        <div class="risk-meter">
+          <div class="risk-needle" style="left:${item.score}%"></div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        ${item.factors.length > 0 ? item.factors.map(f => `
+          <div class="flex items-start gap-2 text-xs">
+            <span class="mt-0.5 flex-shrink-0 w-1.5 h-1.5 rounded-full ${f.impact === 'high' ? 'bg-red-400' : f.impact === 'medium' ? 'bg-yellow-400' : 'bg-green-400'}"></span>
+            <span class="text-slate-300">${f.label}</span>
+          </div>
+        `).join('') : '<p class="text-green-400 text-xs">No risk factors identified.</p>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function runRiskAnalysis() {
+  const btn = event.target.closest('button');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> Run Analysis`;
+    renderAIRisk();
+  }, 800);
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+seedData();
+renderDashboard();
+
+if (window.innerWidth <= 768) {
+  document.getElementById('sidebar').classList.add('collapsed');
+}
+</script>
+
+</body>
+</html>
